@@ -1,0 +1,29 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local args = {
+  {name="FILE", description="selected file", required=true, multiple=true}
+}
+local man_obj = man.man("touch", "Update the modification time of each FILE", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 2) then error("invalid number of arguments") end
+
+for i, name in ipairs(argt) do
+  if (i == 1) then goto continue end
+  
+  local path = pathutil.normalize(name, cwd)
+  if (OS.is_catalog(path)) then error(path .. ': not a file') end
+  if (OS.exists(path)) then
+    OS.touch(path)
+  else
+    io.File:open(path, 'w'):close()
+  end
+  ::continue::
+end

@@ -1,0 +1,51 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+local users = require("/system/lib/users")
+local groups = require("/system/lib/groups")
+
+local args = {
+  {name="OWNER", description="new owner and group (optional)", required=true},
+  {name="FILE", description="selected file", required=true, multiple=true}
+}
+local man_obj = man.man("chmod", "Change owner of each FILE to OWNER", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 3) then error("invalid number of arguments") end
+
+local function parsePair(input)
+  local first, second = input:match("^(.-):(.-)$")
+  if first and second then
+    return first, second
+  else
+    local single = input
+    return single, nil
+  end
+end
+
+local userS, groupS = parsePair(argt[2])
+local uid = tonumber(userS)
+local gid = tonumber(groupS)
+if (uid == nil) then
+  local user = users:from_name(userS)
+  if (user == nil) then error('user not found') end
+  uid = user.uid
+end
+if (gid == nil) then
+  local group = groups:from_name(groupS)
+  if (group == nil and groupS ~= nil) then error('group not found') end
+  if (group ~= nil) then gid = group.gid end
+end
+
+for i, name in ipairs(argt) do
+  if (i < 3) then goto continue end
+  
+  local path = pathutil.normalize(name, cwd)
+  OS.chown(path, uid, gid)
+  ::continue::
+end

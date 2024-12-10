@@ -1,0 +1,41 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local string = require("string")
+local strutil = require("string-util")
+local groups = require("/system/lib/groups")
+
+local flags = {
+  {short = "l", long = "list", description = "use a long listing format", option=true},
+}
+local man_obj = man.man("groups", "List groups", {}, flags)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, {}, flags)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt ~= 1) then error("invalid number of arguments") end
+
+function groups_base(gl)
+  for gid, data in pairs(gl) do
+    print(data.name)
+  end
+end
+
+function groups_ext(gl)
+  for gid, data in pairs(gl) do
+    local row = ""
+    row = row .. string.format("%-3d", data.gid)
+    row = row .. string.format(" %-6s", data.name)
+    row = row .. string.format(" %-3d", data.usize)
+    print(row)
+  end
+end
+
+local gl = groups:list()
+if argt['l'] or argt['list'] then
+  groups_ext(gl)
+else
+  groups_base(gl)
+end

@@ -1,0 +1,25 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local args = {
+  {name="MODE", description="desired permission value in XXX format", required=true},
+  {name="FILE", description="selected file", required=true, multiple=true}
+}
+local man_obj = man.man("chmod", "Change mode of each FILE to MODE", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 3) then error("invalid number of arguments") end
+
+for i, name in ipairs(argt) do
+  if (i < 3) then goto continue end
+  
+  local path = pathutil.normalize(name, cwd)
+  OS.chmod(path, argt[2])
+  ::continue::
+end

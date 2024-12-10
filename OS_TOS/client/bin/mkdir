@@ -1,0 +1,30 @@
+require("os")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local args = {
+  {name="DIRECTORY", description="directory(ies) to create", required=true}
+}
+local man_obj = man.man("mkdir", "Create the DIRECTORY(ies), if they do not already exist", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt ~= 2) then error("invalid number of arguments") end
+
+local path = pathutil.normalize(argt[2], cwd)
+local parts = strutil.split(path, "/")
+
+local cpath = "/"
+for _, part in ipairs(parts) do
+  cpath = pathutil.normalize(part, cpath)
+  if (OS.is_file(cpath)) then
+    error(cpath .. ": not a directory")
+  end
+
+  if (not OS.exists(cpath)) then
+    OS.mkdir(cpath)
+  end
+end

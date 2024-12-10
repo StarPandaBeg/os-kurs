@@ -1,0 +1,62 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local strutil = require("string-util")
+local validator = require("validators")
+local users = require("/system/lib/users")
+local groups = require("/system/lib/groups")
+
+local args = {
+  {name="NAME", description="user name", required=true}
+}
+local flags = {
+  {long = "uid", description = "target user id"},
+  {long = "home", description = "home directory name"},
+  {short="p", long = "password", description = "password"},
+}
+local man_obj = man.man("useradd", "Add new user", args, flags)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args, flags)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt ~= 2) then error("invalid number of arguments") end
+
+local name = argt[2]:lower()
+local user = users:from_name(name)
+if (user ~= nil) then error('user already exists') end
+
+local target_uid = tonumber(argt['uid'])
+if (target_uid ~= nil) then
+  if (users:exists(target_uid)) then error('user with specified uid already exists') end
+end
+
+if (groups:from_name(name) ~= nil) then
+  error('group with specified name already exists')
+end
+
+local password = argt['password'] or argt['p']
+if (password == nil) then
+  while (1) do
+    io.IO.write("Enter new password: ")
+    password = io.IO.read()
+    local status, data = pcall(function() validator:minlen(password, 4) end)
+    if (status) then break end
+    print(data)
+  end
+else
+  validator:minlen(password, 4)
+end
+
+local gid = groups:add({
+  name = name
+})
+local uid = users:add({
+  uid = target_uid,
+  gid = gid,
+  name = name,
+  password = password,
+  home = argt['home']
+})
+
+groups:adduser(gid, uid)

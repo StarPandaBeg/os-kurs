@@ -1,0 +1,41 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local string = require("string")
+local strutil = require("string-util")
+local users = require("/system/lib/users")
+
+local flags = {
+  {short = "l", long = "list", description = "use a long listing format", option=true},
+}
+local man_obj = man.man("users", "List users", {}, flags)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, {}, flags)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt ~= 1) then error("invalid number of arguments") end
+
+function users_base(ul)
+  for uid, data in pairs(ul) do
+    print(data.name)
+  end
+end
+
+function users_ext(ul)
+  for uid, data in pairs(ul) do
+    local row = ""
+    row = row .. string.format("%-3d", data.uid)
+    row = row .. string.format(" %-6s", data.name)
+    row = row .. string.format(" %-10s", data.home)
+    print(row)
+  end
+end
+
+local ul = users:list()
+if argt['l'] or argt['list'] then
+  users_ext(ul)
+else
+  users_base(ul)
+end

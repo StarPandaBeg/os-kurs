@@ -1,0 +1,40 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local args = {
+  {name="FILE", description="selected file", required=true, multiple=true}
+}
+local man_obj = man.man("cat", "Concatenate FILE(s) to standart output", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 2) then error("invalid number of arguments") end
+
+local newLineFlag = false
+
+for i, name in ipairs(argt) do
+  if (i == 1) then goto continue end
+  
+  local path = pathutil.normalize(name, cwd)
+  if (OS.is_catalog(path)) then error(path .. ': not a file') end
+  local file = io.File:open(path, 'r')
+
+  file:seek(0, "end")
+  local fsize = file:tell()
+  file:seek(0)
+
+  local data, read = file:read(fsize)
+  file:close()
+
+  newLineFlag = newLineFlag or (read > 0)
+
+  io.IO.write(data)
+  ::continue::
+end
+
+if (newLineFlag) then print() end

@@ -1,0 +1,25 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local strutil = require("string-util")
+local groups = require("/system/lib/groups")
+
+local args = {
+  {name="NAME", description="gid/groupname", required=true}
+}
+local man_obj = man.man("groupdel", "Remove a group", args, {})
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args, {})
+if (man.try_print(argt, man_obj)) then return end
+if (#argt ~= 2) then error("invalid number of arguments") end
+
+local gid = tonumber(argt[2])
+if (gid == nil) then
+  local group = groups:from_name(argt[2])
+  if (group == nil) then error('group not found') end
+  gid = group.gid
+end
+
+groups:remove(gid)

@@ -1,0 +1,125 @@
+require("os")
+local attr = require("attr")
+local ros = require("os-real")
+local colors = require("colors")
+local man = require("man")
+local table = require("table")
+local string = require("string")
+local pathlib = require("path")
+local strutil = require("string-util")
+local users = require("/system/lib/users")
+local groups = require("/system/lib/groups")
+
+local args = {
+  {name="FILE", description="selected file", required=true}
+}
+local flags = {
+  {short = "a", long = "all", description = "show all files", option=true},
+  {short = "l", long = "list", description = "use a long listing format", option=true},
+}
+local man_obj = man.man("ls", "List information about files", args, flags)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args, flags)
+if (man.try_print(argt, man_obj)) then return end
+
+local function format_time(timestamp)
+  local table = OS.date("*t", timestamp)
+  local current_year = OS.date("*t").year
+  if table.year == current_year then
+    return OS.date("%b %d %H:%M", timestamp)
+  else
+    return OS.date("%b %d %Y", timestamp)
+  end
+end
+
+local function ls_base(path)
+  local entries = OS.listdir(path)
+  local files = {}
+  for i,v in ipairs(entries) do
+    if (v:sub(1, 1) == "." and argt['a'] == nil and argt['all'] == nil) then 
+      goto continue
+    end
+    
+    local lp = pathlib.normalize(v, path)
+    if (OS.is_file(lp)) then
+      table.insert(files, v)
+    else
+      print(colors("%{blue}" .. v))
+    end
+
+    ::continue::
+  end
+  for i,v in ipairs(files) do
+    print(v)
+  end
+end
+
+local function to_perm_triad(fattr, who)
+  local s = ""
+  local table = {"r", "w", "x"}
+  for i=0,2,1 do
+    if (fattr:can(who, i)) then s = s .. table[i+1] 
+    else s = s .. "-" end
+  end
+  return s
+end
+
+local function ls_ext_print(name, path)
+  local data = OS.filedata(path)
+  local fattr = attr.FileAttr:create(data.attr)
+  local row = nil
+
+  if (fattr:is_dir()) then row = "d"
+  else row = "-" end
+
+  local owner = users:from_uid(data.uid)
+  local group = groups:from_gid(data.gid)
+
+  row = row .. to_perm_triad(fattr, 0)
+  row = row .. to_perm_triad(fattr, 1)
+  row = row .. to_perm_triad(fattr, 2)
+  row = row .. string.format(" %2d", data.links)
+  row = row .. string.format(" %6s", owner.name or data.uid)
+  row = row .. string.format(" %6s", group.name or data.gid)
+  row = row .. string.format(" %6d", data.size)
+  row = row .. " " .. format_time(data.mtime)
+
+  row = row .. " " .. name
+  print(row)
+end
+
+local function ls_ext(path)
+  local entries = OS.listdir(path)
+  local files = {}
+  for i,v in ipairs(entries) do
+    if (v:sub(1, 1) == "." and argt['a'] == nil and argt['all'] == nil) then 
+      goto continue
+    end
+    local lp = pathlib.normalize(v, path)
+    if (OS.is_file(lp)) then
+      table.insert(files, v)
+    else
+      ls_ext_print(v, lp)
+    end
+    ::continue::
+  end
+  for i,v in ipairs(files) do
+    local lp = pathlib.normalize(v, path)
+    ls_ext_print(v, lp)
+  end
+end
+
+local function ls()
+  local p = argt[2] or cwd
+  local pn = pathlib.normalize(p, cwd)
+
+  if (argt['l'] or argt['list']) then
+    ls_ext(pn)
+  else
+    ls_base(pn)
+  end
+end
+
+ls()

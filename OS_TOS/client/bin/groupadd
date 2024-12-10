@@ -1,0 +1,32 @@
+require("os")
+local man = require("man")
+local strutil = require("string-util")
+local groups = require("/system/lib/groups")
+
+local args = {
+  {name="NAME", description="group name", required=true}
+}
+local flags = {
+  {long = "gid", description = "target group id"},
+}
+local man_obj = man.man("groupadd", "Add new group", args, flags)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args, flags)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt ~= 2) then error("invalid number of arguments") end
+
+local name = argt[2]:lower()
+local group = groups:from_name(name)
+if (group ~= nil) then error('group already exists') end
+
+local target_gid = tonumber(argt['gid'])
+if (target_gid ~= nil) then
+  if (groups:exists(target_gid)) then error('group with specified gid already exists') end
+end
+
+groups:add({
+  gid = target_gid,
+  name = name
+})

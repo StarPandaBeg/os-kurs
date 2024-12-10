@@ -1,0 +1,26 @@
+require("os")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local args = {
+  {name="DIRECTORY", description="selected directory", required=true, multiple=true}
+}
+local man_obj = man.man("rmdir", "Remove the empty DIRECTORY", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 2) then error("invalid number of arguments") end
+
+for i, name in ipairs(argt) do
+  if (i == 1) then goto continue end
+  
+  local path = pathutil.normalize(name, cwd)
+  if (not OS.is_catalog(path)) then error(path .. ': not a directory') end
+  if (#OS.listdir(path) > 0) then error(path .. ': directory is not empty') end
+  OS.rm(path)
+
+  ::continue::
+end

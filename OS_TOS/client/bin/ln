@@ -1,0 +1,28 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local BUF_SIZE = 512
+
+local args = {
+  {name="TARGET", description="target file", required=true},
+  {name="LINK", description="link path", required=true},
+}
+local man_obj = man.man("ln", "Create a link to TARGET in LINK", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 3) then error("invalid number of arguments") end
+
+local tPath = pathutil.normalize(argt[2], cwd)
+local lPath = pathutil.normalize(argt[3], cwd)
+
+if (not OS.is_file(tPath)) then
+  error("Target path is not a file")
+end
+
+OS.link(tPath, lPath)

@@ -1,0 +1,33 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local math = require("math")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local man_obj = man.man("disk", "Print disk info", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt ~= 1) then error("invalid number of arguments") end
+
+local info = OS.disk()
+
+print("[Disk] Sector: " .. info.dsec)
+print("[Disk] Size (sectors): " .. info.dsize)
+print("[Disk] Size (bytes): " .. info.dsize * info.dsec)
+print("[FS] Cluster: " .. info.bsize)
+print("[FS] Size (clusters): " .. info.fsize)
+print("[FS] Size (bytes): " .. info.fsize * info.bsize)
+print("[FS] Total inodes (clusters): " .. info.isize)
+print("[FS] Total inodes (count): " .. info.bsize // 64 * info.isize)
+print("[FS] Cluster table size (clusters): " .. info.asize)
+print("[FS] Cluster table size (bytes): " .. info.asize * info.bsize)
+print("[FS] Free inodes (count): " .. info.tinode)
+print("[FS] Free fileblocks (count): " .. info.tfree)
+print("[FS] Used space (bytes): " .. info.fsize * info.bsize - info.tfree * info.bsize)
+print("[FS] Free space (bytes): " .. info.tfree * info.bsize)
+print("[FS] Free space (%): " .. math.floor(info.tfree / info.fsize * 100))
+

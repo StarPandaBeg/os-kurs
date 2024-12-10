@@ -1,0 +1,52 @@
+require("os")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local BUF_SIZE = 512
+
+local args = {
+  {name="SOURCE", description="source file", required=true},
+  {name="DESTINATION", description="target file", required=true},
+}
+local flags = {
+  {short = "o", long = "override", description = "override destination if it exists", option=true},
+}
+local man_obj = man.man("cp", "Copy file from SOURCE to DESTINATION", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args, flags)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 3) then error("invalid number of arguments") end
+
+local sPath = pathutil.normalize(argt[2], cwd)
+local tPath = pathutil.normalize(argt[3], cwd)
+
+if (not OS.is_file(sPath)) then
+  error("Source path is not a file")
+end
+
+if (OS.is_catalog(tPath)) then
+  local fName = pathutil.filename(sPath)
+  tPath = pathutil.normalize(tPath .. "/" .. fName, cwd)
+end
+
+if (OS.is_file(tPath) and not argt['o'] and not argt['override']) then
+  error("Target file already exists. Specify -o to override") 
+end
+
+local f1 = io.File:open(sPath, "r")
+local f2 = io.File:open(tPath, "w")
+
+while true do
+  local block, readBytes = f1:read(BUF_SIZE)
+  if readBytes == 0 then
+      break
+  end
+  f2:write(block)
+end
+
+f2:close()
+f1:close()

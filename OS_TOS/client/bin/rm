@@ -1,0 +1,29 @@
+require("os")
+local man = require("man")
+local pathutil = require("path")
+local strutil = require("string-util")
+
+local args = {
+  {name="FILE", description="selected file", required=true, multiple=true}
+}
+local flags = {
+  {short = "r", long = "recursive", description = "remove directories and their contents", option=true},
+}
+local man_obj = man.man("rm", "Remove the FILE", args, flags)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args, flags)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 2) then error("invalid number of arguments") end
+
+for i, name in ipairs(argt) do
+  if (i == 1) then goto continue end
+  
+  local path = pathutil.normalize(name, cwd)
+  if (not OS.exists(path)) then error(path .. ': not a file') end
+  if (OS.is_catalog(path) and not argt['r'] and not argt['recursive']) then error(path .. ': not a file') end
+  OS.rm(path)
+
+  ::continue::
+end

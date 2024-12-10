@@ -1,0 +1,55 @@
+require("os")
+require("te/editor")
+local io = require("io")
+local man = require("man")
+local pathutil = require("path")
+local table = require("table")
+local string = require("string")
+local strutil = require("string-util")
+
+local args = {
+  {name="FILE", description="file", required=true}
+}
+local man_obj = man.man("te", "Simple Text Editor", args)
+
+local cwd = OS.cwd()
+local argc,argv = OS.args()
+local argt = strutil.parse_args(argv, args)
+if (man.try_print(argt, man_obj)) then return end
+if (#argt < 2) then error("invalid number of arguments") end
+
+local path = pathutil.normalize(argt[2], cwd)
+if (OS.is_catalog(path)) then error(path .. ': not a file') end
+
+local writeable = true
+local exists = OS.exists(path)
+if (exists) then
+  writeable = OS.can(path, 1)
+end
+
+local buffer = {}
+if (exists) then
+  local file = io.File:open(path, "r")
+  file:seek(0)
+  local size = file:size()
+  local data, read = file:read(size)
+  file:close()
+
+  for word in string.gmatch(data, "([^\n]+)") do
+    table.insert(buffer, word)
+  end
+end
+
+if #buffer == 0 then buffer = {""} end
+
+on_save(function(data)
+  local file = io.File:open(path, "w")
+  local total = #data
+  for i,row in ipairs(data) do
+    file:write(row or "")
+    if (i ~= total) then file:write("\n") end
+  end
+  file:close()
+end)
+
+run_editor(buffer, not writeable, pathutil.filename(path), not exists)
